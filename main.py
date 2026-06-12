@@ -13,7 +13,7 @@ BG = pygame.transform.scale(
 PLAYER_WIDTH = 200
 PLAYER_HEIGHT = 200
 
-PLAYER = pygame.image.load("gura.png")
+PLAYER = pygame.image.load("gurap.png")
 PLAYER = pygame.transform.scale(PLAYER, (PLAYER_WIDTH, PLAYER_HEIGHT))
 
 
@@ -23,7 +23,7 @@ def draw():
     WIN.blit(
         PLAYER,
         (WIDTH // 2 - PLAYER_WIDTH // 2,
-         HEIGHT - PLAYER_HEIGHT + 30)
+         HEIGHT - PLAYER_HEIGHT + 40)
     )
 
     pygame.display.update()
