@@ -2,45 +2,246 @@ import pygame
 import time
 import random
 
+pygame.init()
+pygame.font.init()
+
+# WINDOW
 WIDTH, HEIGHT = 960, 540
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Get pew-pew'd")
+pygame.display.set_caption("Gura in da wotah!")
 
-BG = pygame.transform.scale(
-    pygame.image.load("Background.png"), (WIDTH, HEIGHT)
-)
+# BACKGROUND
+BG = pygame.transform.scale(pygame.image.load("Background.png"),(WIDTH, HEIGHT))
 
+# PLAYER
 PLAYER_WIDTH = 200
 PLAYER_HEIGHT = 200
 
 PLAYER = pygame.image.load("gurap.png")
-PLAYER = pygame.transform.scale(PLAYER, (PLAYER_WIDTH, PLAYER_HEIGHT))
+PLAYER = pygame.transform.scale(PLAYER,(PLAYER_WIDTH, PLAYER_HEIGHT))
+
+PLAYER_X = WIDTH // 2 - PLAYER_WIDTH // 2
+PLAYER_Y = HEIGHT - PLAYER_HEIGHT + 50
+
+PLAYER_VEL = 5
+
+# STARS
+STAR_WIDTH = 60
+STAR_HEIGHT = 60
+STAR_VEL = 5
+
+STAR = pygame.image.load("star.png")
+STAR = pygame.transform.scale(STAR,(STAR_WIDTH, STAR_HEIGHT))
+
+#COLLISION
+PLAYER_MASK = pygame.mask.from_surface(PLAYER)
+STAR_MASK = pygame.mask.from_surface(STAR)
+
+# FONT
+TIMER_FONT = pygame.font.SysFont("roboto", 30)
+LOSE_FONT = pygame.font.SysFont("roboto", 80)
 
 
-def draw():
+#DRAW FUNCTION
+def draw(player_x, player_y, elapsed_time, stars):
     WIN.blit(BG, (0, 0))
 
-    WIN.blit(
-        PLAYER,
-        (WIDTH // 2 - PLAYER_WIDTH // 2,
-         HEIGHT - PLAYER_HEIGHT + 40)
-    )
+    time_text = TIMER_FONT.render(f"Time: {round(elapsed_time)}s",True,(255, 255, 255))
+    WIN.blit(time_text, (10, 10))
+
+    for star_x, star_y in stars:
+        WIN.blit(STAR, (star_x, star_y))
+
+    WIN.blit(PLAYER, (player_x, player_y))
 
     pygame.display.update()
 
+#game over screen function
+def game_over_screen():
 
+    play_rect = pygame.Rect(WIDTH // 2 - 150, HEIGHT // 2 + 50, 120, 50)
+    quit_rect = pygame.Rect(WIDTH // 2 + 30, HEIGHT // 2 + 50, 120, 50)
+
+    play_scale = 0
+    quit_scale = 0
+    clock = pygame.time.Clock()
+
+    while True:
+
+        WIN.blit(BG, (0, 0))
+
+        lost_text = LOSE_FONT.render("You Lost!", True, "white")
+        WIN.blit(
+            lost_text,
+            (
+                WIDTH // 2 - lost_text.get_width() // 2,
+                HEIGHT // 2 - 100
+            )
+        )
+
+        mouse_pos = pygame.mouse.get_pos()
+
+        play_hover = play_rect.collidepoint(mouse_pos)
+        quit_hover = quit_rect.collidepoint(mouse_pos)
+
+        if play_hover:
+            play_scale = min(play_scale + 1, 12)
+        else:
+            play_scale = max(play_scale - 1, 0)
+
+        if quit_hover:
+            quit_scale = min(quit_scale + 1, 12)
+        else:
+            quit_scale = max(quit_scale - 1, 0)
+
+        play_draw_rect = play_rect.inflate(play_scale, play_scale)
+        quit_draw_rect = quit_rect.inflate(quit_scale, quit_scale)
+
+        pygame.draw.rect(
+            WIN,
+            "white",
+            play_draw_rect,
+            2,
+            border_radius=10
+        )
+
+        pygame.draw.rect(
+            WIN,
+            "white",
+            quit_draw_rect,
+            2,
+            border_radius=10
+        )
+
+        play_text = TIMER_FONT.render("PLAY", True, "white")
+        quit_text = TIMER_FONT.render("QUIT", True, "white")
+
+        WIN.blit(
+            play_text,
+            (
+                play_draw_rect.centerx - play_text.get_width() // 2,
+                play_draw_rect.centery - play_text.get_height() // 2
+            )
+        )
+
+        WIN.blit(
+            quit_text,
+            (
+                quit_draw_rect.centerx - quit_text.get_width() // 2,
+                quit_draw_rect.centery - quit_text.get_height() // 2
+            )
+        )
+
+        pygame.display.update()
+
+        clock.tick(60)
+
+        for event in pygame.event.get():
+
+            if event.type == pygame.QUIT:
+                return False
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+
+                if play_rect.collidepoint(event.pos):
+                    return True
+
+                if quit_rect.collidepoint(event.pos):
+                    return False
+
+
+#MAIN FUNCTION
 def main():
+    global PLAYER_X, PLAYER_Y
+
     run = True
+    clock = pygame.time.Clock()
+
+    start_time = time.time()
+    elapsed_time = 0
+
+    star_add_increment = 1000
+    star_count = 0
+
+    stars = []
+    hit = False
 
     while run:
+
+        star_count += clock.tick(60)
+        elapsed_time = time.time() - start_time
+
+        # SPAWN STARS
+        if star_count >= star_add_increment:
+
+            for _ in range(3):
+
+                valid_position = False
+
+                while not valid_position:
+                    star_x = random.randint(0, WIDTH - STAR_WIDTH)
+                    star_y = -STAR_HEIGHT
+
+                    valid_position = True
+
+                    for existing_star in stars:
+                        if abs(star_x - existing_star[0]) < STAR_WIDTH:
+                            valid_position = False
+                            break
+
+                stars.append([star_x, star_y])
+
+            star_add_increment = max(100,star_add_increment - 10)
+
+            star_count = 0
+
+        # EVENTS
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
 
-        draw()
+        # PLAYER MOVEMENT
+        keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_LEFT] and PLAYER_X > 0:
+            PLAYER_X -= PLAYER_VEL
+
+        if keys[pygame.K_RIGHT] and PLAYER_X < WIDTH - PLAYER_WIDTH:
+            PLAYER_X += PLAYER_VEL
+
+        # STAR MOVEMENT + COLLISION
+        for star in stars[:]:
+
+            star[1] += STAR_VEL
+
+            if star[1] > HEIGHT:
+                stars.remove(star)
+                continue
+
+            offset = (star[0] - PLAYER_X, star[1] - PLAYER_Y)
+
+            if PLAYER_MASK.overlap(STAR_MASK, offset):
+                stars.remove(star)
+                hit = True
+                break
+
+        # GAME OVER
+        if hit:
+            return game_over_screen()
+
+
+
+        draw(PLAYER_X,PLAYER_Y,elapsed_time,stars)
 
     pygame.quit()
 
 
 if __name__ == "__main__":
-    main()
+    while True:
+
+        restart = main()
+
+        if not restart:
+            break
+
+    pygame.quit()
