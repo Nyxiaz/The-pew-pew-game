@@ -8,7 +8,7 @@ pygame.font.init()
 # WINDOW
 WIDTH, HEIGHT = 960, 540
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Gura in da wotah!")
+pygame.display.set_caption("Salmon Rush!")
 
 # BACKGROUND
 BG = pygame.transform.scale(pygame.image.load("Background.png"),(WIDTH, HEIGHT))
@@ -33,9 +33,18 @@ STAR_VEL = 5
 STAR = pygame.image.load("star.png")
 STAR = pygame.transform.scale(STAR,(STAR_WIDTH, STAR_HEIGHT))
 
+# SALMON
+SALMON_WIDTH = 60
+SALMON_HEIGHT = 60
+SALMON_VEL = 5
+
+SALMON = pygame.image.load("salmon.png")
+SALMON = pygame.transform.scale(SALMON,(SALMON_WIDTH, SALMON_HEIGHT))
+
 #COLLISION
 PLAYER_MASK = pygame.mask.from_surface(PLAYER)
 STAR_MASK = pygame.mask.from_surface(STAR)
+SALMON_MASK = pygame.mask.from_surface(SALMON)
 
 # FONT
 TIMER_FONT = pygame.font.SysFont("roboto", 30)
@@ -43,21 +52,27 @@ LOSE_FONT = pygame.font.SysFont("roboto", 80)
 
 
 #DRAW FUNCTION
-def draw(player_x, player_y, elapsed_time, stars):
+def draw(player_x, player_y, elapsed_time, stars, salmons, salmon_count):
     WIN.blit(BG, (0, 0))
 
     time_text = TIMER_FONT.render(f"Time: {round(elapsed_time)}s",True,(255, 255, 255))
     WIN.blit(time_text, (10, 10))
 
+    salmon_text = TIMER_FONT.render(f"Salmon: {salmon_count}",True,(255,255,255))
+    WIN.blit(salmon_text, (10, 45))
+
     for star_x, star_y in stars:
         WIN.blit(STAR, (star_x, star_y))
+
+    for salmon_x, salmon_y in salmons:
+        WIN.blit(SALMON, (salmon_x, salmon_y))
 
     WIN.blit(PLAYER, (player_x, player_y))
 
     pygame.display.update()
 
 #game over screen function
-def game_over_screen():
+def game_over_screen(elapsed_time, salmon_count):
 
     play_rect = pygame.Rect(WIDTH // 2 - 150, HEIGHT // 2 + 50, 120, 50)
     quit_rect = pygame.Rect(WIDTH // 2 + 30, HEIGHT // 2 + 50, 120, 50)
@@ -71,13 +86,13 @@ def game_over_screen():
         WIN.blit(BG, (0, 0))
 
         lost_text = LOSE_FONT.render("You Lost!", True, "white")
-        WIN.blit(
-            lost_text,
-            (
-                WIDTH // 2 - lost_text.get_width() // 2,
-                HEIGHT // 2 - 100
-            )
-        )
+        WIN.blit(lost_text,(WIDTH // 2 - lost_text.get_width() // 2,HEIGHT // 2 - 100))
+
+        time_text = TIMER_FONT.render(f"Time: {elapsed_time}s",True,"white")
+        WIN.blit(time_text,(WIDTH // 2 - time_text.get_width() // 2,HEIGHT // 2 - 20))
+
+        salmon_text = TIMER_FONT.render(f"Salmon: {salmon_count}", True, "white")
+        WIN.blit(salmon_text,(WIDTH // 2 - salmon_text.get_width() // 2,HEIGHT // 2 + 15))
 
         mouse_pos = pygame.mouse.get_pos()
 
@@ -97,40 +112,16 @@ def game_over_screen():
         play_draw_rect = play_rect.inflate(play_scale, play_scale)
         quit_draw_rect = quit_rect.inflate(quit_scale, quit_scale)
 
-        pygame.draw.rect(
-            WIN,
-            "white",
-            play_draw_rect,
-            2,
-            border_radius=10
-        )
+        pygame.draw.rect(WIN,"white",play_draw_rect,2,border_radius=10)
 
-        pygame.draw.rect(
-            WIN,
-            "white",
-            quit_draw_rect,
-            2,
-            border_radius=10
-        )
+        pygame.draw.rect(WIN,"white",quit_draw_rect,2,border_radius=10)
 
         play_text = TIMER_FONT.render("PLAY", True, "white")
         quit_text = TIMER_FONT.render("QUIT", True, "white")
 
-        WIN.blit(
-            play_text,
-            (
-                play_draw_rect.centerx - play_text.get_width() // 2,
-                play_draw_rect.centery - play_text.get_height() // 2
-            )
-        )
+        WIN.blit(play_text,(play_draw_rect.centerx - play_text.get_width() // 2,play_draw_rect.centery - play_text.get_height() // 2 ))
 
-        WIN.blit(
-            quit_text,
-            (
-                quit_draw_rect.centerx - quit_text.get_width() // 2,
-                quit_draw_rect.centery - quit_text.get_height() // 2
-            )
-        )
+        WIN.blit(quit_text,(    quit_draw_rect.centerx - quit_text.get_width() // 2,    quit_draw_rect.centery - quit_text.get_height() // 2))
 
         pygame.display.update()
 
@@ -160,11 +151,15 @@ def main():
     start_time = time.time()
     elapsed_time = 0
 
-    star_add_increment = 1000
+    star_add_increment = 1500
     star_count = 0
-
     stars = []
+
     hit = False
+
+    salmon_count = 0
+    salmons = []
+    salmon_spawn_chance = 20
 
     while run:
 
@@ -180,7 +175,7 @@ def main():
 
                 while not valid_position:
                     star_x = random.randint(0, WIDTH - STAR_WIDTH)
-                    star_y = -STAR_HEIGHT
+                    star_y = random.randint(-300, -STAR_HEIGHT)
 
                     valid_position = True
 
@@ -190,6 +185,20 @@ def main():
                             break
 
                 stars.append([star_x, star_y])
+
+            #Salmon spawn
+            if random.randint(1, 100) <= salmon_spawn_chance:
+                valid_salmon_position = False
+                while not valid_salmon_position:
+                    salmon_x = random.randint(0,WIDTH - SALMON_WIDTH)
+                    valid_salmon_position = True
+                    for star in stars:
+                        if abs(salmon_x - star[0]) < STAR_WIDTH + 20:
+                            valid_salmon_position = False
+                            break
+                salmon_y = -SALMON_HEIGHT
+                salmons.append([salmon_x, salmon_y])
+
 
             star_add_increment = max(100,star_add_increment - 10)
 
@@ -209,9 +218,22 @@ def main():
         if keys[pygame.K_RIGHT] and PLAYER_X < WIDTH - PLAYER_WIDTH:
             PLAYER_X += PLAYER_VEL
 
+        # SALMON MOVEMENT + COLLISION
+        for salmon in salmons[:]:
+
+            salmon[1] += SALMON_VEL
+            offset = (salmon[0] - PLAYER_X, salmon[1] - PLAYER_Y)
+
+            if PLAYER_MASK.overlap(SALMON_MASK, offset):
+                salmons.remove(salmon)
+                salmon_count += 1
+                continue
+
+            if salmon[1] > HEIGHT:
+                salmons.remove(salmon)
+
         # STAR MOVEMENT + COLLISION
         for star in stars[:]:
-
             star[1] += STAR_VEL
 
             if star[1] > HEIGHT:
@@ -227,11 +249,11 @@ def main():
 
         # GAME OVER
         if hit:
-            return game_over_screen()
+            return game_over_screen(round(elapsed_time),salmon_count)
 
 
 
-        draw(PLAYER_X,PLAYER_Y,elapsed_time,stars)
+        draw(PLAYER_X,PLAYER_Y,elapsed_time,stars, salmons, salmon_count)
 
     pygame.quit()
 
